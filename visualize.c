@@ -18,7 +18,7 @@ struct Box {
     int x;
     int y;
     int width;
-    int height
+    int height;
 } typedef Box;
 
 Display *dpy;
@@ -64,7 +64,7 @@ void paint(Box box) {
     XFillRectangle(dpy, win, gc, box.x, box.y, box.width, box.height);
 }
 
-int main() {
+int main(int argc, char **argv) {
     fftw_complex *in, *out;
     in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * BUFFER_SIZE);
     out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * BUFFER_SIZE);
@@ -80,10 +80,16 @@ int main() {
     pa_buffer_attr attr;
     attr.fragsize = pa_usec_to_bytes(1000, &ss);
 
+    char * source;
+
+    if (argc > 1) {
+        source = argv[1];
+    }
+
     s = pa_simple_new(NULL,
                       "Visualizer",
                       PA_STREAM_RECORD,
-                      "alsa_output.pci-0000_00_1f.3.analog-stereo.monitor",
+                      argv[1],
                       "Output",
                       &ss,
                       NULL,
