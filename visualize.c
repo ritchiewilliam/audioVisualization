@@ -7,8 +7,9 @@
 #define BUFFER_SIZE 2048
 
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #define WIDTH 1920
-#define HEIGHT 1080
+#define HEIGHT 300
 #define EDGE 40
 #define FOREGROUND 0x4C566A
 #define BACKGROUND 0xFFFFFF
@@ -24,22 +25,39 @@ struct Box {
 Display *dpy;
 Window win;
 GC gc;
+Region r;
+
+//void initRegion() {
+//    r = XCreateRegion();
+//    XRectangle rectangle;
+//    XUnionRectWithRegion();
+//    XSetRegion(dpy, gc, r);
+//
+//}
 
 void initWindow() {
     dpy = XOpenDisplay(NULL);
     win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0, WIDTH, HEIGHT, 0, 0x000000, 0xFFFFFF);
+    //win = DefaultRootWindow(dpy);
     gc = XCreateGC(dpy, win, 0, NULL);
     XMapWindow(dpy, win);
     XFlush(dpy);
     usleep(20000);
 }
 
-Box * initBoxes (int g, int * n) {
+Box * initBoxes (int g, int * n, int * m) {
 
     int framed = WIDTH - 2 * EDGE;
 
+    *m = 1;
+
     //if boxes don't fit increase the width to integer value
     int w = (int)ceil((double)framed / *n);
+
+    for(; (w - g) < 4; (*m)++) {
+        *n = *n / *m;
+        w = (int)ceil((double)framed / *n);
+    }
     //remove excess boxes that go over edge
     *n -=  ((w * *n) - framed) * ((w * *n) > framed) / w;
 
@@ -78,9 +96,9 @@ int main(int argc, char **argv) {
     ss.rate = 44100;
 
     pa_buffer_attr attr;
-    attr.fragsize = pa_usec_to_bytes(1000, &ss);
+    attr.fragsize = pa_usec_to_bytes(12000, &ss);
 
-    char * source;
+    char * source = "alsa_output.pci-0000_00_1f.3.analog-stereo.monitor";
 
     if (argc > 1) {
         source = argv[1];
@@ -89,7 +107,7 @@ int main(int argc, char **argv) {
     s = pa_simple_new(NULL,
                       "Visualizer",
                       PA_STREAM_RECORD,
-                      argv[1],
+                      source,
                       "Output",
                       &ss,
                       NULL,
@@ -98,9 +116,10 @@ int main(int argc, char **argv) {
 
     int16_t buf[BUFFER_SIZE];
 
+    int scale = 2;
     int n = BUFFER_SIZE / 12; // number of columns in visualization
 
-    Box * boxes = initBoxes(2, &n); // initializes dimensions of n boxes
+    Box * boxes = initBoxes(2, &n, &scale); // initializes dimensions of n boxes
 
     double * heights = (double *)calloc(n, sizeof(double)); //measured heights of boxes
 
@@ -119,9 +138,13 @@ int main(int argc, char **argv) {
         fftw_execute(plan);
 
         for (int i = 0; i < n; i++) {
-            heights[i] = fabs(out[i][0]);
+            heights[i] = 0;
+            for(int j = 0; j < scale; j++) {
+                //printf("%d\n", (scale * i) + j);
+                heights[i] += fabs(out[(scale * i) + j][0]);
+                heights[i] = heights[i] * sqrt(scale) / scale;
+            }
             clear(boxes[i]);
-
             //incremental instead of entire change used to smoothen animation
             boxes[i].height = ((int)((heights[i] / 3000000) * yLimit) - boxes[i].height / 4) + boxes[i].height;
             //box height will cap out at the window limit
