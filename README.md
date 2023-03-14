@@ -15,7 +15,7 @@ Once you have installed the dependencies, you can compile the program.
 gcc -o AudioVisualize visualize.c -lX11 -lpulse -lpulse-simple -lfftw3 -lm 
 ```
 ## Usage
-To use the program, run the binary, including the name of your Pulseaudio source as a parameter.
+To use the program, run the compiled binary, including the name of your Pulseaudio source as a parameter.
 ```bash
 ./AudioVisualize [SOURCE]
 ```
